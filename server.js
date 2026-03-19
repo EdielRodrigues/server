@@ -3,146 +3,101 @@ const cors = require("cors");
 const mercadopago = require("mercadopago");
 const admin = require("firebase-admin");
 
-console.log("🔥 SERVIDOR ATIVO 🔥");
-
 const app = express();
 app.use(express.json());
 app.use(cors());
 
+// 🔥 TESTE
 app.get("/", (req,res)=>{
-res.send("online");
+  res.send("online");
 });
 
-// 🔐 FIREBASE
+// 🔥 FIREBASE
 admin.initializeApp({
-credential: admin.credential.applicationDefault(),
-databaseURL: "https://ferramentas-projeto.firebaseio.com/"
+  credential: admin.credential.applicationDefault(),
+  databaseURL: "https://ferramentas-projeto.firebaseio.com/"
 });
 
-// 🔐 MERCADO PAGO
+// 🔥 MERCADO PAGO
 mercadopago.configure({
-access_token: process.env.MP_TOKEN
+  access_token: process.env.MP_TOKEN
 });
 
-// ==========================
 // 💰 GERAR PIX
-// ==========================
 app.post("/pix", async (req,res)=>{
+  try{
 
-try{
+    const { user, valor } = req.body;
 
-const { user, valor } = req.body;
+    let valorFinal = parseFloat(String(valor).replace(",", "."));
 
-console.log("VALOR RECEBIDO:", valor);
+    if(!valorFinal || valorFinal <= 0){
+      return res.status(400).json({erro:"Valor inválido"});
+    }
 
-// corrigir valor
-let valorFinal = String(valor).replace(",", ".");
-valorFinal = parseFloat(valorFinal);
+    const pagamento = await mercadopago.payment.create({
+      transaction_amount: valorFinal,
+      description: "Adicionar saldo",
+      payment_method_id: "pix",
+      payer:{email:"teste@test.com"},
+      metadata:{user:user}
+    });
 
-if(!valorFinal || valorFinal <= 0){
-return res.status(400).json({erro:"Valor inválido"});
-}
+    res.json({
+      qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
+      copia: pagamento.body.point_of_interaction.transaction_data.qr_code
+    });
 
-// criar pagamento
-const pagamento = await mercadopago.payment.create({
-transaction_amount: valorFinal,
-description: "Adicionar saldo",
-payment_method_id: "pix",
-payer:{email:"teste@test.com"},
-
-metadata:{
-user: user
-}
+  }catch(e){
+    console.log("ERRO PIX:", e);
+    res.sendStatus(500);
+  }
 });
 
-res.json({
-qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
-copia: pagamento.body.point_of_interaction.transaction_data.qr_code
-});
-
-}catch(e){
-console.log("❌ ERRO PIX:", e);
-res.status(500).json({erro:"Erro ao gerar PIX"});
-}
-
-});
-
-// ==========================
 // 🔥 WEBHOOK
-// ==========================
 app.post("/webhook", async (req,res)=>{
+  try{
 
-try{
+    console.log("🔥 WEBHOOK:", req.body);
 
-console.log("🔥 WEBHOOK:", JSON.stringify(req.body));
+    const paymentId = req.body?.data?.id || req.body?.id;
 
-const paymentId = req.body?.data?.id || req.body?.id;
+    if(!paymentId){
+      return res.sendStatus(200);
+    }
 
-if(!paymentId){
-return res.sendStatus(200);
-}
+    const pagamento = await mercadopago.payment.findById(paymentId);
 
-const pagamento = await mercadopago.payment.findById(paymentId);
+    if(pagamento.body.status === "approved"){
 
-if(pagamento.body.status === "approved"){
+      const user = pagamento.body.metadata?.user;
+      const valor = pagamento.body.transaction_amount;
 
-const user = pagamento.body.metadata?.user;
-const valor = pagamento.body.transaction_amount;
+      if(!user){
+        return res.sendStatus(200);
+      }
 
-if(!user){
-return res.sendStatus(200);
-}
+      await admin.database().ref("ganhos/"+user).transaction(s=>{
+        return (s || 0) + valor;
+      });
 
-// 💰 salva saldo
-await admin.database().ref("ganhos/"+user).transaction(s=>{
-return (s || 0) + valor;
+      await admin.database().ref("historico/"+user).push({
+        tipo:"entrada",
+        valor:valor,
+        data:Date.now()
+      });
+
+      console.log("✅ SALDO ADICIONADO:", user, valor);
+    }
+
+    res.sendStatus(200);
+
+  }catch(e){
+    console.log("❌ ERRO WEBHOOK:", e);
+    res.sendStatus(200);
+  }
 });
 
-// 📊 histórico
-await admin.database().ref("historico/"+user).push({
-tipo:"entrada",
-valor:valor,
-data:Date.now()
-});
-
-console.log("✅ SALDO ADICIONADO");
-
-}
-
-res.sendStatus(200);
-
-}catch(e){
-console.log("❌ ERRO:", e);
-res.sendStatus(200);
-}
-
-});
-
-// 👥 afiliado
-const snap = await admin.database().ref("usuarios/"+user).once("value");
-const ref = snap.val()?.ref;
-
-if(ref){
-await admin.database().ref("ganhos/"+ref).transaction(g=>(g||0)+(valor*0.1));
-}
-
-console.log("✅ PAGAMENTO APROVADO:", user, valor);
-
-}
-
-res.sendStatus(200);
-
-}catch(e){
-console.log("❌ ERRO WEBHOOK:", e);
-res.sendStatus(200);
-}
-
-});
-
-// ==========================
-// 🚀 START SERVIDOR
-// ==========================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>{
-console.log("🚀 Rodando na porta", PORT);
+app.listen(10000, ()=>{
+  console.log("🔥 Servidor rodando");
 });
