@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const mercadopago = require("mercadopago");
 const admin = require("firebase-admin");
-
+console.log("🔥 SERVIDOR ATIVO 🔥");
 const app = express();
 app.use(express.json());
 app.use(cors());
