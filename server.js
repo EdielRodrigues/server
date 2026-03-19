@@ -21,7 +21,7 @@ access_token: process.env.MP_TOKEN
 // 💰 GERAR PIX
 app.post("/pix", async (req,res)=>{
 const { user, valor } = req.body;
-
+console.log("VALOR RECEBIDO:", valor);
 // 🔥 CORREÇÃO DO VALOR
 let valorFinal = String(valor).replace(",", ".");
 valorFinal = parseFloat(valorFinal);
