@@ -45,40 +45,41 @@ copia: pagamento.body.point_of_interaction.transaction_data.qr_code
 });
 });
 
-// 🔥 WEBHOOK (SALDO AUTOMÁTICO)
+// 🔥 WEBHOOK PROFISSIONAL
 app.post("/webhook", async (req,res)=>{
-
-try{
 
 const paymentId = req.body.data.id;
 
 const pagamento = await mercadopago.payment.findById(paymentId);
 
-if(pagamento.body.status === "approved"){
+if(pagamento.body.status==="approved"){
 
 const user = pagamento.body.metadata.user;
 const valor = pagamento.body.transaction_amount;
 
-// saldo
-admin.database().ref("ganhos/"+user).transaction(g=>{
-return (g||0) + valor;
-});
+// 💸 TAXA (você ganha 20%)
+const usuarioRecebe = valor * 0.8;
+const seuLucro = valor * 0.2;
 
-// histórico
+// SALDO USUÁRIO
+admin.database().ref("ganhos/"+user).transaction(g=>(g||0)+usuarioRecebe);
+
+// HISTÓRICO
 admin.database().ref("historico/"+user).push({
 tipo:"entrada",
-valor:valor,
+valor:usuarioRecebe,
 data:Date.now()
 });
+
+// 👥 AFILIADO
+const snap = await admin.database().ref("usuarios/"+user).once("value");
+const ref = snap.val()?.ref;
+
+if(ref){
+admin.database().ref("ganhos/"+ref).transaction(g=>(g||0)+(valor*0.1));
+}
 
 }
 
 res.sendStatus(200);
-
-}catch(e){
-res.sendStatus(500);
-}
-
 });
-
-app.listen(10000, ()=>console.log("🔥 Servidor rodando"));
