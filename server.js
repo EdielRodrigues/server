@@ -57,33 +57,53 @@ copia: pagamento.body.point_of_interaction.transaction_data.qr_code
 // 🔥 WEBHOOK PROFISSIONAL
 app.post("/webhook", async (req,res)=>{
 
-app.post("/webhook", async (req,res)=>{
+try{
 
-const paymentId = req.body.data.id;
+console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
+
+const paymentId = req.body?.data?.id;
+
+if(!paymentId){
+return res.sendStatus(200);
+}
 
 const pagamento = await mercadopago.payment.findById(paymentId);
 
 if(pagamento.body.status === "approved"){
 
-const user = pagamento.body.metadata.user;
+const user = pagamento.body.metadata?.user;
 const valor = pagamento.body.transaction_amount;
 
+if(!user){
+console.log("❌ usuário não encontrado");
+return res.sendStatus(200);
+}
+
 // adiciona saldo
-admin.database().ref("ganhos/"+user).transaction(s=>{
+await admin.database().ref("ganhos/"+user).transaction(s=>{
 return (s || 0) + valor;
 });
 
 // histórico
-admin.database().ref("historico/"+user).push({
+await admin.database().ref("historico/"+user).push({
 tipo:"entrada",
 valor:valor,
 data:Date.now()
 });
 
-console.log("💰 PAGAMENTO APROVADO:", user, valor);
+console.log("✅ PAGAMENTO APROVADO:", user, valor);
 
 }
 
+res.sendStatus(200);
+
+}catch(e){
+console.log("❌ ERRO WEBHOOK:", e);
+res.sendStatus(200); // nunca retorna erro pro MP
+}
+
+});
+  
 // 👥 AFILIADO
 const snap = await admin.database().ref("usuarios/"+user).once("value");
 const ref = snap.val()?.ref;
