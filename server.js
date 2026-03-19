@@ -76,13 +76,17 @@ try{
 
 console.log("🔥 WEBHOOK:", JSON.stringify(req.body));
 
-const paymentId = req.body?.data?.id;
+const paymentId = req.body?.data?.id || req.body?.id;
 
 if(!paymentId){
+console.log("❌ sem paymentId");
 return res.sendStatus(200);
 }
 
+// 🔥 busca pagamento real
 const pagamento = await mercadopago.payment.findById(paymentId);
+
+console.log("💰 STATUS:", pagamento.body.status);
 
 if(pagamento.body.status === "approved"){
 
@@ -94,14 +98,29 @@ console.log("❌ usuário não encontrado");
 return res.sendStatus(200);
 }
 
-// 💰 saldo usuário
-await admin.database().ref("ganhos/"+user).transaction(s=>(s||0)+valor);
+// 💰 soma saldo
+await admin.database().ref("ganhos/"+user).transaction(s=>{
+return (s || 0) + valor;
+});
 
 // 📊 histórico
 await admin.database().ref("historico/"+user).push({
 tipo:"entrada",
 valor:valor,
 data:Date.now()
+});
+
+console.log("✅ SALDO ADICIONADO:", user, valor);
+
+}
+
+res.sendStatus(200);
+
+}catch(e){
+console.log("❌ ERRO:", e);
+res.sendStatus(200);
+}
+
 });
 
 // 👥 afiliado
