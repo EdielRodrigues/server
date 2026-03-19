@@ -22,11 +22,20 @@ access_token: process.env.MP_TOKEN
 app.post("/pix", async (req,res)=>{
 const { user, valor } = req.body;
 
+// 🔥 CORREÇÃO DO VALOR
+let valorFinal = String(valor).replace(",", ".");
+valorFinal = parseFloat(valorFinal);
+
+if(!valorFinal || valorFinal <= 0){
+return res.status(400).json({erro:"Valor inválido"});
+}
+
+// 💰 CRIA PIX
 const pagamento = await mercadopago.payment.create({
-transaction_amount: Number(valor),
+transaction_amount: valorFinal,
 description: "Adicionar saldo",
 payment_method_id: "pix",
-payer:{email:"teste@test.com"},
+payer:{email:"diel_zi_nho25@hotmail.com"},
 metadata:{user:user}
 });
 
