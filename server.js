@@ -20,10 +20,10 @@ access_token: process.env.MP_TOKEN
 
 // 💰 GERAR PIX
 app.post("/pix", async (req,res)=>{
-const { user } = req.body;
+const { user, valor } = req.body;
 
 const pagamento = await mercadopago.payment.create({
-transaction_amount: 10,
+transaction_amount: Number(valor),
 description: "Adicionar saldo",
 payment_method_id: "pix",
 payer:{email:"teste@test.com"},
