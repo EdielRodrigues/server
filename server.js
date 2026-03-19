@@ -56,6 +56,10 @@ app.post("/pix", async (req,res)=>{
 
 // 🔥 WEBHOOK
 app.post("/webhook", async (req,res)=>{
+  console.log("🔥 WEBHOOK CHEGOU:", JSON.stringify(req.body));
+
+  try{
+app.post("/webhook", async (req,res)=>{
   try{
 
     console.log("🔥 WEBHOOK:", req.body);
