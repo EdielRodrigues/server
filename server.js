@@ -79,14 +79,10 @@ console.log("🔥 WEBHOOK:", JSON.stringify(req.body));
 const paymentId = req.body?.data?.id || req.body?.id;
 
 if(!paymentId){
-console.log("❌ sem paymentId");
 return res.sendStatus(200);
 }
 
-// 🔥 busca pagamento real
 const pagamento = await mercadopago.payment.findById(paymentId);
-
-console.log("💰 STATUS:", pagamento.body.status);
 
 if(pagamento.body.status === "approved"){
 
@@ -94,11 +90,10 @@ const user = pagamento.body.metadata?.user;
 const valor = pagamento.body.transaction_amount;
 
 if(!user){
-console.log("❌ usuário não encontrado");
 return res.sendStatus(200);
 }
 
-// 💰 soma saldo
+// 💰 salva saldo
 await admin.database().ref("ganhos/"+user).transaction(s=>{
 return (s || 0) + valor;
 });
@@ -110,7 +105,7 @@ valor:valor,
 data:Date.now()
 });
 
-console.log("✅ SALDO ADICIONADO:", user, valor);
+console.log("✅ SALDO ADICIONADO");
 
 }
 
