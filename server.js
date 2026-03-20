@@ -40,18 +40,16 @@ app.post("/pix", async (req,res)=>{
       description: "Adicionar saldo",
       payment_method_id: "pix",
       payer:{email:"teste@test.com"},
+
       metadata:{user:user}
     });
 
     const paymentId = pagamento.body.id;
 
-    console.log("🆔 PAYMENT ID:", paymentId);
+    // 🔥 VERIFICA AUTOMÁTICO (3 segundos depois)
+    setTimeout(async ()=>{
 
-    // 🔥 VERIFICAÇÃO AUTOMÁTICA
-    setTimeout(async () => {
-      try {
-
-        console.log("🔍 CONSULTANDO PAGAMENTO...");
+      try{
 
         const p = await mercadopago.payment.findById(paymentId);
 
@@ -75,9 +73,10 @@ app.post("/pix", async (req,res)=>{
           console.log("✅ SALDO ADICIONADO DIRETO:", user, valor);
         }
 
-      } catch(e){
-        console.log("❌ ERRO VERIFICAÇÃO:", e);
+      }catch(e){
+        console.log("ERRO VERIFICAÇÃO:", e);
       }
+
     }, 5000);
 
     res.json({
@@ -86,7 +85,7 @@ app.post("/pix", async (req,res)=>{
     });
 
   }catch(e){
-    console.log("❌ ERRO PIX:", e);
+    console.log("ERRO PIX:", e);
     res.sendStatus(500);
   }
 });
