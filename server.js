@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// 🔥 TESTE
+// 🔥 TESTE ONLINE
 app.get("/", (req,res)=>{
   res.send("online");
 });
@@ -26,7 +26,6 @@ mercadopago.configure({
 // 💰 GERAR PIX
 app.post("/pix", async (req,res)=>{
   try{
-
     const { user, valor } = req.body;
 
     let valorFinal = parseFloat(String(valor).replace(",", "."));
@@ -49,20 +48,16 @@ app.post("/pix", async (req,res)=>{
     });
 
   }catch(e){
-    console.log("ERRO PIX:", e);
+    console.log("❌ ERRO PIX:", e);
     res.sendStatus(500);
   }
 });
 
-// 🔥 WEBHOOK
-app.post("/webhook", async (req,res)=>{
-  console.log("🔥 WEBHOOK CHEGOU:", JSON.stringify(req.body));
-
-  try{
+// 🔥 WEBHOOK CORRETO
 app.post("/webhook", async (req,res)=>{
   try{
 
-    console.log("🔥 WEBHOOK:", req.body);
+    console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
 
     const paymentId = req.body?.data?.id || req.body?.id;
 
@@ -78,13 +73,16 @@ app.post("/webhook", async (req,res)=>{
       const valor = pagamento.body.transaction_amount;
 
       if(!user){
+        console.log("❌ usuário não encontrado");
         return res.sendStatus(200);
       }
 
+      // 💰 ADICIONA SALDO
       await admin.database().ref("ganhos/"+user).transaction(s=>{
         return (s || 0) + valor;
       });
 
+      // 📊 HISTÓRICO
       await admin.database().ref("historico/"+user).push({
         tipo:"entrada",
         valor:valor,
@@ -102,6 +100,7 @@ app.post("/webhook", async (req,res)=>{
   }
 });
 
+// 🚀 START
 app.listen(10000, ()=>{
   console.log("🔥 Servidor rodando");
 });
