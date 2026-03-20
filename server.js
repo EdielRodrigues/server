@@ -66,11 +66,13 @@ app.post("/pix", async (req,res)=>{
 
 // 🔥 WEBHOOK (RECEBE PAGAMENTO)
 app.post("/webhook", async (req,res)=>{
+  console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
+
   try{
 
-    console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
-
     const paymentId = req.body?.data?.id || req.body?.id;
+
+    console.log("🆔 ID:", paymentId);
 
     if(!paymentId){
       return res.sendStatus(200);
@@ -79,6 +81,7 @@ app.post("/webhook", async (req,res)=>{
     const pagamento = await mercadopago.payment.findById(paymentId);
 
     console.log("📊 STATUS:", pagamento.body.status);
+    console.log("👤 USER:", pagamento.body.metadata);
 
     if(pagamento.body.status === "approved"){
 
@@ -86,16 +89,14 @@ app.post("/webhook", async (req,res)=>{
       const valor = pagamento.body.transaction_amount;
 
       if(!user){
-        console.log("❌ usuário não encontrado");
+        console.log("❌ USER NÃO VEIO");
         return res.sendStatus(200);
       }
 
-      // 💰 ADICIONA SALDO
       await admin.database().ref("ganhos/"+user).transaction(s=>{
         return (s || 0) + valor;
       });
 
-      // 📊 HISTÓRICO
       await admin.database().ref("historico/"+user).push({
         tipo:"entrada",
         valor:valor,
@@ -111,9 +112,4 @@ app.post("/webhook", async (req,res)=>{
     console.log("❌ ERRO WEBHOOK:", e);
     res.sendStatus(200);
   }
-});
-
-// 🚀 START
-app.listen(10000, ()=>{
-  console.log("🔥 Servidor rodando");
 });
