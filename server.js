@@ -46,7 +46,7 @@ app.post("/pix", async (req,res)=>{
       },
 
       // 🔥 ESSA LINHA É O SEGREDO
-      notification_url: "https://server-3-tkgb.onrender.com/webhook",
+      notification_url: "https://server-1-f91n.onrender.com/webhook",
 
       metadata: {
         user: user
