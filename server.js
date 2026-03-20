@@ -34,20 +34,37 @@ app.post("/pix", async (req,res)=>{
       return res.status(400).json({erro:"Valor inválido"});
     }
 
-  const pagamento = await mercadopago.payment.create({
-  transaction_amount: valorFinal,
-  description: "Adicionar saldo",
-  payment_method_id: "pix",
-  payer: { email: "teste@test.com" },
+    console.log("💰 GERANDO PIX:", user, valorFinal);
 
-  notification_url: "https://server-3-tkgb.onrender.com/webhook", // 🔥 ESSA LINHA RESOLVE
+    const pagamento = await mercadopago.payment.create({
+      transaction_amount: valorFinal,
+      description: "Adicionar saldo",
+      payment_method_id: "pix",
 
-  metadata: {
-    user: user
+      payer: {
+        email: "teste@test.com"
+      },
+
+      // 🔥 ESSA LINHA É O SEGREDO
+      notification_url: "https://server-3-tkgb.onrender.com/webhook",
+
+      metadata: {
+        user: user
+      }
+    });
+
+    res.json({
+      qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
+      copia: pagamento.body.point_of_interaction.transaction_data.qr_code
+    });
+
+  }catch(e){
+    console.log("❌ ERRO PIX:", e);
+    res.sendStatus(500);
   }
 });
 
-// 🔥 WEBHOOK CORRETO
+// 🔥 WEBHOOK (RECEBE PAGAMENTO)
 app.post("/webhook", async (req,res)=>{
   try{
 
@@ -60,6 +77,8 @@ app.post("/webhook", async (req,res)=>{
     }
 
     const pagamento = await mercadopago.payment.findById(paymentId);
+
+    console.log("📊 STATUS:", pagamento.body.status);
 
     if(pagamento.body.status === "approved"){
 
