@@ -40,16 +40,18 @@ app.post("/pix", async (req,res)=>{
       description: "Adicionar saldo",
       payment_method_id: "pix",
       payer:{email:"teste@test.com"},
-
       metadata:{user:user}
     });
 
     const paymentId = pagamento.body.id;
 
-    // 🔥 VERIFICA AUTOMÁTICO (3 segundos depois)
-    setTimeout(async ()=>{
+    console.log("🆔 PAYMENT ID:", paymentId);
 
-      try{
+    // 🔥 VERIFICAÇÃO AUTOMÁTICA
+    setTimeout(async () => {
+      try {
+
+        console.log("🔍 CONSULTANDO PAGAMENTO...");
 
         const p = await mercadopago.payment.findById(paymentId);
 
@@ -73,10 +75,9 @@ app.post("/pix", async (req,res)=>{
           console.log("✅ SALDO ADICIONADO DIRETO:", user, valor);
         }
 
-      }catch(e){
-        console.log("ERRO VERIFICAÇÃO:", e);
+      } catch(e){
+        console.log("❌ ERRO VERIFICAÇÃO:", e);
       }
-
     }, 5000);
 
     res.json({
@@ -85,10 +86,11 @@ app.post("/pix", async (req,res)=>{
     });
 
   }catch(e){
-    console.log("ERRO PIX:", e);
+    console.log("❌ ERRO PIX:", e);
     res.sendStatus(500);
   }
 });
+
 // 🔥 WEBHOOK (RECEBE PAGAMENTO)
 app.post("/webhook", async (req,res)=>{
   console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
