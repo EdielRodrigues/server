@@ -7,7 +7,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// 🔥 FIREBASE PRIMEIRO
+// 🔥 TESTE ONLINE
+app.get("/", (req,res)=>{
+  res.send("online");
+});
+
+// 🔥 FIREBASE (AGORA CORRETO)
 const serviceAccount = require("./firebase.json");
 
 admin.initializeApp({
@@ -15,24 +20,12 @@ admin.initializeApp({
   databaseURL: "https://ferramentas-projeto.firebaseio.com/"
 });
 
-// 🔥 DEPOIS AS ROTAS
-app.get("/", (req,res)=>{
-  res.send("online");
-});
-
-app.get("/teste-saldo", async (req,res)=>{
-
-  await admin.database().ref("ganhos/teste123").set(50);
-
-  res.send("SALDO TESTE OK");
-});
-
 // 🔥 MERCADO PAGO
 mercadopago.configure({
   access_token: process.env.MP_TOKEN
 });
 
-// 💰 GERAR PIX + VERIFICAÇÃO AUTOMÁTICA
+// 💰 GERAR PIX
 app.post("/pix", async (req,res)=>{
   try{
 
@@ -49,56 +42,12 @@ app.post("/pix", async (req,res)=>{
       description: "Adicionar saldo",
       payment_method_id: "pix",
       payer:{email:"teste@test.com"},
+
+      // 🔥 ESSENCIAL
+      notification_url: "https://server-1-f91n.onrender.com/webhook",
+
       metadata:{user:user}
     });
-
-    const paymentId = pagamento.body.id;
-
-    console.log("🆔 PAYMENT ID:", paymentId);
-
-    // 🔥 LOOP DE VERIFICAÇÃO (GARANTE QUE VAI CAIR)
-    let tentativas = 0;
-
-    const verificar = setInterval(async () => {
-      try{
-
-        tentativas++;
-
-        const p = await mercadopago.payment.findById(paymentId);
-
-        console.log("📊 STATUS:", p.body.status);
-
-        if(p.body.status === "approved"){
-
-          const user = p.body.metadata?.user;
-          const valor = p.body.transaction_amount;
-
-          await admin.database().ref("ganhos/"+user).transaction(s=>{
-            return (s || 0) + valor;
-          });
-
-          await admin.database().ref("historico/"+user).push({
-            tipo:"entrada",
-            valor:valor,
-            data:Date.now()
-          });
-
-          console.log("✅ SALDO ADICIONADO DIRETO:", user, valor);
-
-          clearInterval(verificar);
-        }
-
-        // 🔥 PARA DEPOIS DE 10 TENTATIVAS
-        if(tentativas >= 10){
-          console.log("⛔ PAROU DE VERIFICAR");
-          clearInterval(verificar);
-        }
-
-      }catch(e){
-        console.log("❌ ERRO VERIFICAÇÃO:", e);
-      }
-
-    }, 5000); // verifica a cada 5 segundos
 
     res.json({
       qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
@@ -111,7 +60,53 @@ app.post("/pix", async (req,res)=>{
   }
 });
 
-// 🚀 START
-app.listen(10000, ()=>{
-  console.log("🔥 Servidor rodando");
+// 🔥 WEBHOOK
+app.post("/webhook", async (req,res)=>{
+  console.log("🔥 WEBHOOK:", req.body);
+
+  try{
+
+    const paymentId = req.body?.data?.id || req.body?.id;
+
+    if(!paymentId){
+      return res.sendStatus(200);
+    }
+
+    const pagamento = await mercadopago.payment.findById(paymentId);
+
+    if(pagamento.body.status === "approved"){
+
+      const user = pagamento.body.metadata?.user;
+      const valor = pagamento.body.transaction_amount;
+
+      if(!user){
+        return res.sendStatus(200);
+      }
+
+      await admin.database().ref("ganhos/"+user).transaction(s=>{
+        return (s || 0) + valor;
+      });
+
+      await admin.database().ref("historico/"+user).push({
+        tipo:"entrada",
+        valor:valor,
+        data:Date.now()
+      });
+
+      console.log("✅ SALDO ADICIONADO:", user, valor);
+    }
+
+    res.sendStatus(200);
+
+  }catch(e){
+    console.log("❌ ERRO WEBHOOK:", e);
+    res.sendStatus(200);
+  }
+});
+
+// 🔥 PORTA CORRETA (OBRIGATÓRIO)
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, ()=>{
+  console.log("🔥 Servidor rodando na porta " + PORT);
 });
