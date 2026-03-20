@@ -8,8 +8,10 @@ app.use(express.json());
 app.use(cors());
 
 // 🔥 FIREBASE PRIMEIRO
+const serviceAccount = require("./firebase.json");
+
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
+  credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://ferramentas-projeto.firebaseio.com/"
 });
 
