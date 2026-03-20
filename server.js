@@ -23,7 +23,7 @@ mercadopago.configure({
   access_token: process.env.MP_TOKEN
 });
 
-// 💰 GERAR PIX
+// 💰 GERAR PIX + VERIFICAÇÃO AUTOMÁTICA
 app.post("/pix", async (req,res)=>{
   try{
 
@@ -40,16 +40,20 @@ app.post("/pix", async (req,res)=>{
       description: "Adicionar saldo",
       payment_method_id: "pix",
       payer:{email:"teste@test.com"},
-
       metadata:{user:user}
     });
 
     const paymentId = pagamento.body.id;
 
-    // 🔥 VERIFICA AUTOMÁTICO (3 segundos depois)
-    setTimeout(async ()=>{
+    console.log("🆔 PAYMENT ID:", paymentId);
 
+    // 🔥 LOOP DE VERIFICAÇÃO (GARANTE QUE VAI CAIR)
+    let tentativas = 0;
+
+    const verificar = setInterval(async () => {
       try{
+
+        tentativas++;
 
         const p = await mercadopago.payment.findById(paymentId);
 
@@ -71,13 +75,21 @@ app.post("/pix", async (req,res)=>{
           });
 
           console.log("✅ SALDO ADICIONADO DIRETO:", user, valor);
+
+          clearInterval(verificar);
+        }
+
+        // 🔥 PARA DEPOIS DE 10 TENTATIVAS
+        if(tentativas >= 10){
+          console.log("⛔ PAROU DE VERIFICAR");
+          clearInterval(verificar);
         }
 
       }catch(e){
-        console.log("ERRO VERIFICAÇÃO:", e);
+        console.log("❌ ERRO VERIFICAÇÃO:", e);
       }
 
-    }, 5000);
+    }, 5000); // verifica a cada 5 segundos
 
     res.json({
       qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
@@ -85,57 +97,12 @@ app.post("/pix", async (req,res)=>{
     });
 
   }catch(e){
-    console.log("ERRO PIX:", e);
+    console.log("❌ ERRO PIX:", e);
     res.sendStatus(500);
   }
 });
 
-// 🔥 WEBHOOK (RECEBE PAGAMENTO)
-app.post("/webhook", async (req,res)=>{
-  console.log("🔥 WEBHOOK RECEBIDO:", JSON.stringify(req.body));
-
-  try{
-
-    const paymentId = req.body?.data?.id || req.body?.id;
-
-    console.log("🆔 ID:", paymentId);
-
-    if(!paymentId){
-      return res.sendStatus(200);
-    }
-
-    const pagamento = await mercadopago.payment.findById(paymentId);
-
-    console.log("📊 STATUS:", pagamento.body.status);
-    console.log("👤 USER:", pagamento.body.metadata);
-
-    if(pagamento.body.status === "approved"){
-
-      const user = pagamento.body.metadata?.user;
-      const valor = pagamento.body.transaction_amount;
-
-      if(!user){
-        console.log("❌ USER NÃO VEIO");
-        return res.sendStatus(200);
-      }
-
-      await admin.database().ref("ganhos/"+user).transaction(s=>{
-        return (s || 0) + valor;
-      });
-
-      await admin.database().ref("historico/"+user).push({
-        tipo:"entrada",
-        valor:valor,
-        data:Date.now()
-      });
-
-      console.log("✅ SALDO ADICIONADO:", user, valor);
-    }
-
-    res.sendStatus(200);
-
-  }catch(e){
-    console.log("❌ ERRO WEBHOOK:", e);
-    res.sendStatus(200);
-  }
+// 🚀 START
+app.listen(10000, ()=>{
+  console.log("🔥 Servidor rodando");
 });
