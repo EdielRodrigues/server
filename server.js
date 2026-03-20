@@ -34,22 +34,16 @@ app.post("/pix", async (req,res)=>{
       return res.status(400).json({erro:"Valor inválido"});
     }
 
-    const pagamento = await mercadopago.payment.create({
-      transaction_amount: valorFinal,
-      description: "Adicionar saldo",
-      payment_method_id: "pix",
-      payer:{email:"teste@test.com"},
-      metadata:{user:user}
-    });
+  const pagamento = await mercadopago.payment.create({
+  transaction_amount: valorFinal,
+  description: "Adicionar saldo",
+  payment_method_id: "pix",
+  payer: { email: "teste@test.com" },
 
-    res.json({
-      qr: pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
-      copia: pagamento.body.point_of_interaction.transaction_data.qr_code
-    });
+  notification_url: "https://server-3-tkgb.onrender.com/webhook", // 🔥 ESSA LINHA RESOLVE
 
-  }catch(e){
-    console.log("❌ ERRO PIX:", e);
-    res.sendStatus(500);
+  metadata: {
+    user: user
   }
 });
 
