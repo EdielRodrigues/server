@@ -7,23 +7,22 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// 🔥 TESTE ONLINE
+// 🔥 FIREBASE PRIMEIRO
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  databaseURL: "https://ferramentas-projeto.firebaseio.com/"
+});
+
+// 🔥 DEPOIS AS ROTAS
 app.get("/", (req,res)=>{
   res.send("online");
 });
 
-// 🔥 TESTE FIREBASE
 app.get("/teste-saldo", async (req,res)=>{
 
   await admin.database().ref("ganhos/teste123").set(50);
 
   res.send("SALDO TESTE OK");
-});
-
-// 🔥 FIREBASE
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  databaseURL: "https://ferramentas-projeto.firebaseio.com/"
 });
 
 // 🔥 MERCADO PAGO
