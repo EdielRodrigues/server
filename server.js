@@ -12,6 +12,14 @@ app.get("/", (req,res)=>{
   res.send("online");
 });
 
+// 🔥 TESTE FIREBASE
+app.get("/teste-saldo", async (req,res)=>{
+
+  await admin.database().ref("ganhos/teste123").set(50);
+
+  res.send("SALDO TESTE OK");
+});
+
 // 🔥 FIREBASE
 admin.initializeApp({
   credential: admin.credential.applicationDefault(),
